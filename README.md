@@ -13,7 +13,7 @@ Cross-platform desktop utility that resets QA workstations to a clean baseline i
 ## Tech Stack
 
 - **Framework**: Tauri v2
-- **Backend**: Rust 1.75+ (tokio, serde, walkdir, tracing)
+- **Backend**: Rust 1.75+ (tokio, serde, serde_json, walkdir, tracing, dirs, uuid, thiserror)
 - **Frontend**: React 18 + TypeScript + Vite + TailwindCSS
 - **Plugins**: tauri-plugin-shell, tauri-plugin-dialog, tauri-plugin-log
 
@@ -24,16 +24,16 @@ cleanslate-qa/
 ├── src-tauri/              # Rust backend
 │   ├── capabilities/       # IPC permissions
 │   ├── src/
-│   │   ├── engine/         # Cleanup logic modules
+│   │   ├── engine/         # Cleanup logic modules (browser, system, network, validator, exclusions)
 │   │   ├── logger/         # Secure logging
 │   │   ├── lib.rs          # IPC commands
 │   │   └── main.rs         # Entry point
 │   ├── Cargo.toml
 │   └── tauri.conf.json
 ├── src/                    # React frontend
-│   ├── components/         # UI components
-│   ├── hooks/              # Custom React hooks
-│   ├── types/              # TypeScript interfaces
+│   ├── components/         # UI components (Dashboard, LogViewer, ProgressView, Settings)
+│   ├── hooks/              # Custom React hooks (useCleanup)
+│   ├── types/              # TypeScript interfaces (IPC types)
 │   └── App.tsx
 ├── package.json
 └── README.md
@@ -71,8 +71,9 @@ npm run tauri build
 
 1. Launch CleanSlate QA
 2. Click "Start Cleanup" to begin the reset process
-3. Review the results and validation report
-4. Check the log file for detailed operation records
+3. Review the dry-run analysis and confirm to proceed
+4. Review the results and validation report
+5. Check the log file for detailed operation records
 
 ## Configuration
 
@@ -80,6 +81,7 @@ Access settings via the gear icon to:
 - Add excluded paths that should never be cleaned
 - Toggle individual cleanup operations
 - Configure clipboard and DNS handling
+- View detailed logs and operation history
 
 ## Security
 
