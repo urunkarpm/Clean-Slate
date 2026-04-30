@@ -7,7 +7,7 @@ import type { BrowserUpdateInfo } from './types/ipc';
 function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [showBrowserUpdates, setShowBrowserUpdates] = useState(false);
-
+  
   return (
     <div className="relative">
       <Dashboard />
@@ -15,11 +15,11 @@ function App() {
       {/* Settings Button */}
       <button
         onClick={() => setShowSettings(true)}
-        className="fixed top-4 right-4 p-3 bg-gray-800 hover:bg-gray-700 rounded-full shadow-lg transition-colors z-40"
+        className="fixed top-6 right-6 p-4 glass-card rounded-xl shadow-lg transition-all hover-lift z-40 group"
         aria-label="Settings"
       >
         <svg
-          className="w-6 h-6 text-gray-300"
+          className="w-6 h-6 text-gray-300 group-hover:text-white transition-colors"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -42,11 +42,11 @@ function App() {
       {/* Browser Updates Button */}
       <button
         onClick={() => setShowBrowserUpdates(true)}
-        className="fixed top-4 right-20 p-3 bg-gray-800 hover:bg-gray-700 rounded-full shadow-lg transition-colors z-40"
+        className="fixed top-6 right-24 p-4 glass-card rounded-xl shadow-lg transition-all hover-lift z-40 group"
         aria-label="Check Browser Updates"
       >
         <svg
-          className="w-6 h-6 text-gray-300"
+          className="w-6 h-6 text-gray-300 group-hover:text-white transition-colors"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -94,68 +94,68 @@ function BrowserUpdatesModal({ onClose }: { onClose: () => void }) {
   }, []);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-semibold">Browser Updates</h2>
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="glass-card rounded-2xl p-8 max-w-md w-full mx-4 shadow-2xl slide-in">
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-2xl font-bold gradient-text">Browser Updates</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white text-2xl leading-none"
+            className="w-10 h-10 rounded-xl glass flex items-center justify-center text-gray-400 hover:text-white transition-all hover:bg-white/10"
           >
-            ×
+            <span className="text-2xl leading-none">×</span>
           </button>
         </div>
 
         {loading ? (
-          <div className="py-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
-            <p className="text-gray-400 text-sm mt-4">Checking for browser updates...</p>
+          <div className="py-12 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500/30 border-t-indigo-500 mx-auto"></div>
+            <p className="text-gray-400 text-sm mt-6">Checking for browser updates...</p>
           </div>
         ) : error ? (
-          <div className="bg-red-900/30 border border-red-700 rounded-lg p-4">
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6">
             <p className="text-red-300 text-sm">{error}</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {updates.length === 0 ? (
-              <p className="text-gray-400 text-sm text-center py-4">No browsers detected</p>
+              <p className="text-gray-400 text-sm text-center py-8">No browsers detected</p>
             ) : (
               updates.map((update, idx) => (
                 <div
                   key={idx}
-                  className={`rounded-lg p-4 border ${
+                  className={`rounded-xl p-5 border transition-all hover-lift ${
                     update.error
-                      ? 'bg-gray-700/50 border-gray-600'
+                      ? 'bg-gray-500/10 border-gray-500/30'
                       : update.update_available
-                      ? 'bg-yellow-900/30 border-yellow-700'
-                      : 'bg-green-900/30 border-green-700'
+                      ? 'bg-yellow-500/10 border-yellow-500/30'
+                      : 'bg-green-500/10 border-green-500/30'
                   }`}
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <h3 className="font-semibold text-white">{update.name}</h3>
+                      <h3 className="font-semibold text-white text-lg">{update.name}</h3>
                       {update.error ? (
-                        <p className="text-red-400 text-sm mt-1">{update.error}</p>
+                        <p className="text-red-400 text-sm mt-2">{update.error}</p>
                       ) : (
                         <>
-                          <p className="text-gray-400 text-sm mt-1">
-                            Current: {update.current_version}
+                          <p className="text-gray-400 text-sm mt-2">
+                            Current: <span className="text-white">{update.current_version}</span>
                           </p>
                           {update.latest_version && (
                             <p className="text-gray-400 text-sm">
-                              Latest: {update.latest_version}
+                              Latest: <span className="text-white">{update.latest_version}</span>
                             </p>
                           )}
                         </>
                       )}
                     </div>
                     <span
-                      className={`text-sm px-2 py-1 rounded ${
+                      className={`text-sm px-3 py-1.5 rounded-full font-medium ${
                         update.error
-                          ? 'bg-gray-600 text-gray-300'
+                          ? 'bg-gray-500/20 text-gray-300'
                           : update.update_available
-                          ? 'bg-yellow-600 text-yellow-100'
-                          : 'bg-green-600 text-green-100'
+                          ? 'bg-yellow-500/20 text-yellow-300'
+                          : 'bg-green-500/20 text-green-300'
                       }`}
                     >
                       {update.error
@@ -171,10 +171,10 @@ function BrowserUpdatesModal({ onClose }: { onClose: () => void }) {
           </div>
         )}
 
-        <div className="mt-6 flex justify-end">
+        <div className="mt-8 flex justify-end">
           <button
             onClick={onClose}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
+            className="px-8 py-3 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white rounded-xl transition-all hover-lift shadow-lg shadow-indigo-500/30"
           >
             Close
           </button>
