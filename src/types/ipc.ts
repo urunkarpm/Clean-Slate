@@ -5,6 +5,21 @@ export interface CleanupProgress {
   details?: string;
 }
 
+export interface DryRunOperation {
+  name: string;
+  path: string;
+  file_count: number;
+  bytes: number;
+  would_modify: boolean;
+}
+
+export interface DryRunResult {
+  estimated_files_to_remove: number;
+  estimated_bytes_to_free: number;
+  operations: DryRunOperation[];
+  warnings: string[];
+}
+
 export interface BrowserCleanupResult {
   browser: string;
   cache_cleared: boolean;
