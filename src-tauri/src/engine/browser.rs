@@ -14,6 +14,16 @@ pub struct BrowserCleanupResult {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BrowserUpdateInfo {
+    pub name: String,
+    pub current_version: String,
+    pub latest_version: Option<String>,
+    pub is_up_to_date: bool,
+    pub update_available: bool,
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DryRunOperation {
     pub name: String,
     pub path: String,
@@ -216,5 +226,226 @@ async fn clear_edge_data(_os: &super::os::OS, _exclusions: &ExclusionConfig) -> 
         local_storage_cleared: false,
         items_removed: 0,
         error: None,
+    }
+}
+
+pub async fn check_browser_updates(os: &super::os::OS) -> Vec<BrowserUpdateInfo> {
+    let mut updates = Vec::new();
+    
+    // Check Chrome updates
+    let chrome_info = check_chrome_update(os).await;
+    updates.push(chrome_info);
+    
+    // Check Firefox updates
+    let firefox_info = check_firefox_update(os).await;
+    updates.push(firefox_info);
+    
+    // Check Edge updates
+    let edge_info = check_edge_update(os).await;
+    updates.push(edge_info);
+    
+    updates
+}
+
+async fn check_chrome_update(os: &super::os::OS) -> BrowserUpdateInfo {
+    // Simulated version check - in production this would query the browser's update API
+    // or check against a version endpoint
+    let current_version = get_installed_chrome_version(os).await;
+    
+    match current_version {
+        Ok(version) => {
+            // Simulate checking for latest version (in real implementation, this would call an API)
+            let latest_version = simulate_get_latest_version("chrome").await;
+            
+            let is_up_to_date = version == latest_version;
+            
+            BrowserUpdateInfo {
+                name: "Chrome".to_string(),
+                current_version: version,
+                latest_version: Some(latest_version.clone()),
+                is_up_to_date,
+                update_available: !is_up_to_date,
+                error: None,
+            }
+        }
+        Err(e) => BrowserUpdateInfo {
+            name: "Chrome".to_string(),
+            current_version: "Unknown".to_string(),
+            latest_version: None,
+            is_up_to_date: false,
+            update_available: false,
+            error: Some(e),
+        },
+    }
+}
+
+async fn check_firefox_update(os: &super::os::OS) -> BrowserUpdateInfo {
+    let current_version = get_installed_firefox_version(os).await;
+    
+    match current_version {
+        Ok(version) => {
+            let latest_version = simulate_get_latest_version("firefox").await;
+            let is_up_to_date = version == latest_version;
+            
+            BrowserUpdateInfo {
+                name: "Firefox".to_string(),
+                current_version: version,
+                latest_version: Some(latest_version.clone()),
+                is_up_to_date,
+                update_available: !is_up_to_date,
+                error: None,
+            }
+        }
+        Err(e) => BrowserUpdateInfo {
+            name: "Firefox".to_string(),
+            current_version: "Unknown".to_string(),
+            latest_version: None,
+            is_up_to_date: false,
+            update_available: false,
+            error: Some(e),
+        },
+    }
+}
+
+async fn check_edge_update(os: &super::os::OS) -> BrowserUpdateInfo {
+    let current_version = get_installed_edge_version(os).await;
+    
+    match current_version {
+        Ok(version) => {
+            let latest_version = simulate_get_latest_version("edge").await;
+            let is_up_to_date = version == latest_version;
+            
+            BrowserUpdateInfo {
+                name: "Edge".to_string(),
+                current_version: version,
+                latest_version: Some(latest_version.clone()),
+                is_up_to_date,
+                update_available: !is_up_to_date,
+                error: None,
+            }
+        }
+        Err(e) => BrowserUpdateInfo {
+            name: "Edge".to_string(),
+            current_version: "Unknown".to_string(),
+            latest_version: None,
+            is_up_to_date: false,
+            update_available: false,
+            error: Some(e),
+        },
+    }
+}
+
+async fn get_installed_chrome_version(os: &super::os::OS) -> Result<String, String> {
+    // In production, this would read from the browser's installation directory or registry
+    // For now, return a simulated version
+    match os {
+        super::os::OS::Windows => {
+            let chrome_path = PathBuf::from(format!(
+                "{}\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe",
+                std::env::var("USERPROFILE").unwrap_or_default()
+            ));
+            if chrome_path.exists() {
+                Ok("120.0.6099.109".to_string())
+            } else {
+                Err("Chrome not installed".to_string())
+            }
+        }
+        super::os::OS::MacOS => {
+            let chrome_path = dirs::home_dir()
+                .map(|p| p.join("Applications/Google Chrome.app"))
+                .unwrap_or_else(|| PathBuf::from("/tmp"));
+            if chrome_path.exists() {
+                Ok("120.0.6099.109".to_string())
+            } else {
+                Err("Chrome not installed".to_string())
+            }
+        }
+        super::os::OS::Linux => {
+            let chrome_path = PathBuf::from("/usr/bin/google-chrome");
+            if chrome_path.exists() {
+                Ok("120.0.6099.109".to_string())
+            } else {
+                Err("Chrome not installed".to_string())
+            }
+        }
+    }
+}
+
+async fn get_installed_firefox_version(os: &super::os::OS) -> Result<String, String> {
+    match os {
+        super::os::OS::Windows => {
+            let firefox_path = PathBuf::from(format!(
+                "{}\\Program Files\\Mozilla Firefox\\firefox.exe",
+                std::env::var("PROGRAMFILES").unwrap_or_default()
+            ));
+            if firefox_path.exists() {
+                Ok("121.0".to_string())
+            } else {
+                Err("Firefox not installed".to_string())
+            }
+        }
+        super::os::OS::MacOS => {
+            let firefox_path = dirs::home_dir()
+                .map(|p| p.join("Applications/Firefox.app"))
+                .unwrap_or_else(|| PathBuf::from("/tmp"));
+            if firefox_path.exists() {
+                Ok("121.0".to_string())
+            } else {
+                Err("Firefox not installed".to_string())
+            }
+        }
+        super::os::OS::Linux => {
+            let firefox_path = PathBuf::from("/usr/bin/firefox");
+            if firefox_path.exists() {
+                Ok("121.0".to_string())
+            } else {
+                Err("Firefox not installed".to_string())
+            }
+        }
+    }
+}
+
+async fn get_installed_edge_version(os: &super::os::OS) -> Result<String, String> {
+    match os {
+        super::os::OS::Windows => {
+            let edge_path = PathBuf::from(format!(
+                "{}\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+                std::env::var("PROGRAMFILES(X86)").unwrap_or_default()
+            ));
+            if edge_path.exists() {
+                Ok("120.0.2210.91".to_string())
+            } else {
+                Err("Edge not installed".to_string())
+            }
+        }
+        super::os::OS::MacOS => {
+            let edge_path = dirs::home_dir()
+                .map(|p| p.join("Applications/Microsoft Edge.app"))
+                .unwrap_or_else(|| PathBuf::from("/tmp"));
+            if edge_path.exists() {
+                Ok("120.0.2210.91".to_string())
+            } else {
+                Err("Edge not installed".to_string())
+            }
+        }
+        super::os::OS::Linux => {
+            let edge_path = PathBuf::from("/usr/bin/microsoft-edge");
+            if edge_path.exists() {
+                Ok("120.0.2210.91".to_string())
+            } else {
+                Err("Edge not installed".to_string())
+            }
+        }
+    }
+}
+
+async fn simulate_get_latest_version(browser: &str) -> String {
+    // In production, this would call the browser's official update API
+    // For simulation purposes, return a fixed "latest" version
+    match browser {
+        "chrome" => "120.0.6099.130".to_string(),
+        "firefox" => "121.0".to_string(),
+        "edge" => "120.0.2210.133".to_string(),
+        _ => "0.0.0".to_string(),
     }
 }

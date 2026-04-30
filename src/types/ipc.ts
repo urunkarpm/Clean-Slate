@@ -62,3 +62,12 @@ export interface OSInfo {
   temp_dir: string;
   hosts_file: string;
 }
+
+export interface BrowserUpdateInfo {
+  name: string;
+  current_version: string;
+  latest_version: string | null;
+  is_up_to_date: boolean;
+  update_available: boolean;
+  error?: string;
+}
