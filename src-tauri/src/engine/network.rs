@@ -7,6 +7,39 @@ pub struct NetworkCleanupResult {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DryRunOperation {
+    pub name: String,
+    pub path: String,
+    pub file_count: u64,
+    pub bytes: u64,
+    pub would_modify: bool,
+}
+
+pub async fn analyze_network_cleanup(os: &super::os::OS) -> Vec<DryRunOperation> {
+    let mut operations = Vec::new();
+    
+    // DNS flush - requires elevated privileges on most platforms
+    operations.push(DryRunOperation {
+        name: "DNS Flush".to_string(),
+        path: "system".to_string(),
+        file_count: 0,
+        bytes: 0,
+        would_modify: true,
+    });
+    
+    // Hosts file reset - requires elevated privileges
+    operations.push(DryRunOperation {
+        name: "Hosts File Reset".to_string(),
+        path: os.get_hosts_file_path(),
+        file_count: 0,
+        bytes: 0,
+        would_modify: true,
+    });
+    
+    operations
+}
+
 pub async fn flush_dns(os: super::os::OS) -> NetworkCleanupResult {
     let command = match os {
         super::os::OS::Windows => ("ipconfig", &["/flushdns"]),

@@ -2,7 +2,7 @@ import React from 'react';
 import { useCleanup } from '../hooks/useCleanup';
 
 export function Dashboard() {
-  const { isRunning, progress, summary, osInfo, error, startCleanup, reset } = useCleanup();
+  const { isRunning, progress, summary, dryRunResult, osInfo, error, runDryRun, startCleanup, reset } = useCleanup();
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
@@ -24,14 +24,14 @@ export function Dashboard() {
           <div className="bg-gray-800 rounded-lg p-6 shadow-lg">
             <h2 className="text-xl font-semibold mb-4">Cleanup Status</h2>
             
-            {!isRunning && !summary && !error && (
+            {!isRunning && !dryRunResult && !summary && !error && (
               <div className="text-center py-8">
-                <p className="text-gray-400 mb-4">Ready to clean your system</p>
+                <p className="text-gray-400 mb-4">Ready to analyze your system</p>
                 <button
-                  onClick={startCleanup}
+                  onClick={runDryRun}
                   className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
                 >
-                  Start Cleanup
+                  Run Dry-Run Analysis
                 </button>
               </div>
             )}
@@ -61,6 +61,43 @@ export function Dashboard() {
                 >
                   Try Again
                 </button>
+              </div>
+            )}
+
+            {dryRunResult && !summary && (
+              <div className="space-y-4">
+                <div className="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4">
+                  <h3 className="text-yellow-400 font-semibold">⚠ Dry-Run Complete</h3>
+                  <p className="text-yellow-300 text-sm mt-1">
+                    Estimated: {dryRunResult.estimated_files_to_remove.toLocaleString()} files ({(dryRunResult.estimated_bytes_to_free / 1024 / 1024).toFixed(2)} MB) will be removed
+                  </p>
+                </div>
+                
+                {dryRunResult.warnings.length > 0 && (
+                  <div className="bg-orange-900/30 border border-orange-700 rounded-lg p-4">
+                    <h4 className="text-orange-400 font-semibold mb-2">Warnings:</h4>
+                    <ul className="text-orange-300 text-sm list-disc list-inside">
+                      {dryRunResult.warnings.map((warning, idx) => (
+                        <li key={idx}>{warning}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                <div className="flex gap-3">
+                  <button
+                    onClick={startCleanup}
+                    className="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-8 rounded-lg transition-colors"
+                  >
+                    Confirm & Execute Cleanup
+                  </button>
+                  <button
+                    onClick={reset}
+                    className="bg-gray-700 hover:bg-gray-600 text-white font-semibold py-3 px-6 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
               </div>
             )}
 
