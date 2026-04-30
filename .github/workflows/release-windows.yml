@@ -1,0 +1,62 @@
+name: Build Windows Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to upload to (e.g. v2.0.0)'
+        required: true
+        default: 'v2.0.0'
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - name: Install Node deps
+        run: npm ci
+
+      - name: Build Tauri (NSIS + MSI)
+        run: npm run tauri:build -- --bundles nsis,msi
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ''
+
+      - name: Find build artifacts
+        id: artifacts
+        shell: pwsh
+        run: |
+          $nsis = Get-ChildItem -Recurse "src-tauri/target/release/bundle/nsis" -Filter "*.exe" | Select-Object -First 1
+          $msi  = Get-ChildItem -Recurse "src-tauri/target/release/bundle/msi"  -Filter "*.msi" | Select-Object -First 1
+          "nsis=$($nsis.FullName)" >> $env:GITHUB_OUTPUT
+          "msi=$($msi.FullName)"   >> $env:GITHUB_OUTPUT
+          Write-Host "NSIS: $($nsis.FullName)"
+          Write-Host "MSI:  $($msi.FullName)"
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          files: |
+            ${{ steps.artifacts.outputs.nsis }}
+            ${{ steps.artifacts.outputs.msi }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
