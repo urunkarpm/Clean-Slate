@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use walkdir::WalkDir;
 use crate::engine::exclusions::ExclusionConfig;
+use super::DryRunOperation;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SystemCleanupResult {
@@ -10,15 +11,6 @@ pub struct SystemCleanupResult {
     pub items_removed: u64,
     pub bytes_freed: u64,
     pub error: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DryRunOperation {
-    pub name: String,
-    pub path: String,
-    pub file_count: u64,
-    pub bytes: u64,
-    pub would_modify: bool,
 }
 
 pub async fn analyze_system_cleanup(os: &super::os::OS) -> Vec<DryRunOperation> {

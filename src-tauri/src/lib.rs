@@ -4,9 +4,8 @@
 pub mod logger;
 pub mod engine;
 
-use tauri::Manager;
 use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
+use crate::engine::{browser, system, network, validator, DryRunOperation};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CleanupProgress {
@@ -22,15 +21,6 @@ pub struct DryRunResult {
     pub estimated_bytes_to_free: u64,
     pub operations: Vec<DryRunOperation>,
     pub warnings: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DryRunOperation {
-    pub name: String,
-    pub path: String,
-    pub file_count: u64,
-    pub bytes: u64,
-    pub would_modify: bool,
 }
 
 #[tauri::command]
@@ -74,7 +64,8 @@ async fn run_dry_run() -> Result<DryRunResult, String> {
         operations.push(op);
     }
     
-    logger.log("INFO", &format!("Dry-run complete: {} files, {} bytes", total_files, total_bytes), None)?;
+    logger.log("INFO", &format!("Dry-run complete: {} files, {} bytes", total_files, total_bytes), None)
+        .map_err(|e| e.to_string())?;
     
     Ok(DryRunResult {
         estimated_files_to_remove: total_files,
@@ -101,22 +92,22 @@ async fn start_cleanup(dry_run_confirmed: bool) -> Result<CleanupSummary, String
         .map_err(|e| e.to_string())?;
     
     // Phase 1: Browser cleanup
-    logger.log("INFO", "Clearing browser caches", None)?;
+    logger.log("INFO", "Clearing browser caches", None).map_err(|e| e.to_string())?;
     let browser_results = browser::clear_browser_cache(os_type.clone(), &exclusion_config).await;
-    
+
     // Phase 2: System cleanup
-    logger.log("INFO", "Cleaning system files", None)?;
+    logger.log("INFO", "Cleaning system files", None).map_err(|e| e.to_string())?;
     let system_results = system::cleanup_system(os_type.clone(), &exclusion_config).await;
-    
+
     // Phase 3: Network cleanup
-    logger.log("INFO", "Resetting network settings", None)?;
+    logger.log("INFO", "Resetting network settings", None).map_err(|e| e.to_string())?;
     let network_results = network::cleanup_network(os_type.clone()).await;
-    
+
     // Phase 4: Validation
-    logger.log("INFO", "Validating cleanup", None)?;
+    logger.log("INFO", "Validating cleanup", None).map_err(|e| e.to_string())?;
     let validation_results = validator::validate_cleanup().await;
-    
-    logger.finalize()?;
+
+    logger.finalize().map_err(|e| e.to_string())?;
     
     Ok(CleanupSummary {
         browser_results,
