@@ -159,13 +159,23 @@ pub struct OSInfo {
     pub hosts_file: String,
 }
 
+#[tauri::command]
+async fn check_browser_updates() -> Result<Vec<browser::BrowserUpdateInfo>, String> {
+    use crate::engine::{os, browser};
+    
+    let os_type = os::OS::detect();
+    let updates = browser::check_browser_updates(&os_type).await;
+    
+    Ok(updates)
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_log::Builder::new().build())
-        .invoke_handler(tauri::generate_handler![run_dry_run, start_cleanup, get_os_info])
+        .invoke_handler(tauri::generate_handler![run_dry_run, start_cleanup, get_os_info, check_browser_updates])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
