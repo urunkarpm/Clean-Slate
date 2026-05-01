@@ -25,7 +25,7 @@ pub struct DryRunResult {
 
 #[tauri::command]
 async fn run_dry_run() -> Result<DryRunResult, String> {
-    use crate::engine::{os, browser, system, network};
+    use crate::engine::{os, browser, system, network, os_specific};
     use crate::logger::SecureLogger;
     
     let os_type = os::OS::detect();
@@ -39,7 +39,7 @@ async fn run_dry_run() -> Result<DryRunResult, String> {
     let mut total_bytes = 0u64;
     let mut warnings = Vec::new();
     
-    // Analyze browser caches
+    // Analyze browser caches (includes downloads, trash, screenshots)
     let browser_ops = browser::analyze_browser_cache(&os_type).await;
     for op in browser_ops {
         total_files += op.file_count;
@@ -50,6 +50,14 @@ async fn run_dry_run() -> Result<DryRunResult, String> {
     // Analyze system temp files
     let system_ops = system::analyze_system_cleanup(&os_type).await;
     for op in system_ops {
+        total_files += op.file_count;
+        total_bytes += op.bytes;
+        operations.push(op);
+    }
+    
+    // Analyze OS-specific cleanup candidates
+    let os_ops = os_specific::analyze_os_specific(&os_type).await;
+    for op in os_ops {
         total_files += op.file_count;
         total_bytes += op.bytes;
         operations.push(op);
@@ -77,7 +85,7 @@ async fn run_dry_run() -> Result<DryRunResult, String> {
 
 #[tauri::command]
 async fn start_cleanup(dry_run_confirmed: bool) -> Result<CleanupSummary, String> {
-    use crate::engine::{os, browser, system, network, validator, exclusions};
+    use crate::engine::{os, browser, system, network, validator, exclusions, os_specific};
     use crate::logger::SecureLogger;
     
     if !dry_run_confirmed {
@@ -91,7 +99,7 @@ async fn start_cleanup(dry_run_confirmed: bool) -> Result<CleanupSummary, String
     logger.log("INFO", "Starting cleanup process", None)
         .map_err(|e| e.to_string())?;
     
-    // Phase 1: Browser cleanup
+    // Phase 1: Browser cleanup (includes downloads, trash, screenshots)
     logger.log("INFO", "Clearing browser caches", None).map_err(|e| e.to_string())?;
     let browser_results = browser::clear_browser_cache(os_type.clone(), &exclusion_config).await;
 
@@ -99,11 +107,15 @@ async fn start_cleanup(dry_run_confirmed: bool) -> Result<CleanupSummary, String
     logger.log("INFO", "Cleaning system files", None).map_err(|e| e.to_string())?;
     let system_results = system::cleanup_system(os_type.clone(), &exclusion_config).await;
 
-    // Phase 3: Network cleanup
+    // Phase 3: OS-specific cleanup
+    logger.log("INFO", "Cleaning OS-specific files", None).map_err(|e| e.to_string())?;
+    let os_results = os_specific::cleanup_os_specific(os_type.clone(), &exclusion_config).await;
+
+    // Phase 4: Network cleanup
     logger.log("INFO", "Resetting network settings", None).map_err(|e| e.to_string())?;
     let network_results = network::cleanup_network(os_type.clone()).await;
 
-    // Phase 4: Validation
+    // Phase 5: Validation
     logger.log("INFO", "Validating cleanup", None).map_err(|e| e.to_string())?;
     let validation_results = validator::validate_cleanup().await;
 
@@ -113,6 +125,7 @@ async fn start_cleanup(dry_run_confirmed: bool) -> Result<CleanupSummary, String
         browser_results,
         system_results,
         network_results,
+        os_results,
         validation_results,
         log_path: logger.get_log_path().to_string_lossy().to_string(),
     })
@@ -122,6 +135,7 @@ async fn start_cleanup(dry_run_confirmed: bool) -> Result<CleanupSummary, String
 pub struct CleanupSummary {
     pub browser_results: Vec<browser::BrowserCleanupResult>,
     pub system_results: Vec<system::SystemCleanupResult>,
+    pub os_results: Vec<os_specific::OSCleanupResult>,
     pub network_results: Vec<network::NetworkCleanupResult>,
     pub validation_results: Vec<validator::ValidationResult>,
     pub log_path: String,
