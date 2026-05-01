@@ -24,19 +24,66 @@ pub struct BrowserUpdateInfo {
     pub error: Option<String>,
 }
 
+/// Analyze all cleanup candidates including browser caches, downloads, trash, screenshots
 pub async fn analyze_browser_cache(os: &super::os::OS) -> Vec<DryRunOperation> {
     let mut operations = Vec::new();
 
+    // Browser cache analysis
     for (name, dirs) in [
         ("Chrome Cache", get_chrome_cache_paths(os)),
         ("Firefox Cache", get_firefox_cache_paths(os)),
         ("Edge Cache", get_edge_cache_paths(os)),
+        ("Safari Cache", get_safari_cache_paths(os)),
     ] {
         for dir in dirs {
             let (count, bytes) = analyze_directory(&dir);
+            if count > 0 || bytes > 0 {
+                operations.push(DryRunOperation {
+                    name: name.to_string(),
+                    path: dir.to_string_lossy().to_string(),
+                    file_count: count,
+                    bytes,
+                    would_modify: false,
+                });
+            }
+        }
+    }
+
+    // Downloads folder analysis
+    if let Some(downloads) = get_downloads_path(os) {
+        let (count, bytes) = analyze_directory(&downloads);
+        if count > 0 || bytes > 0 {
             operations.push(DryRunOperation {
-                name: name.to_string(),
-                path: dir.to_string_lossy().to_string(),
+                name: "Downloads Folder".to_string(),
+                path: downloads.to_string_lossy().to_string(),
+                file_count: count,
+                bytes,
+                would_modify: false,
+            });
+        }
+    }
+
+    // Trash/Recycle Bin analysis
+    for (name, trash_path) in get_trash_paths(os) {
+        let (count, bytes) = analyze_directory(&trash_path);
+        if count > 0 || bytes > 0 {
+            operations.push(DryRunOperation {
+                name: format!("{} Trash", name),
+                path: trash_path.to_string_lossy().to_string(),
+                file_count: count,
+                bytes,
+                would_modify: false,
+            });
+        }
+    }
+
+    // Screenshots analysis
+    for (name, screenshot_dir) in get_screenshot_paths(os) {
+        let (count, bytes) = analyze_directory(&screenshot_dir);
+        if count > 0 || bytes > 0 {
+            operations.push(DryRunOperation {
+                name: format!("{} Screenshots", name),
+                path: screenshot_dir.to_string_lossy().to_string(),
                 file_count: count,
                 bytes,
                 would_modify: false,
@@ -147,6 +194,83 @@ fn get_edge_cache_paths(os: &super::os::OS) -> Vec<PathBuf> {
             ];
             let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/tmp"));
             candidates.iter().map(|c| home.join(c)).collect()
+        }
+    }
+}
+
+fn get_safari_cache_paths(os: &super::os::OS) -> Vec<PathBuf> {
+    match os {
+        super::os::OS::MacOS => vec![
+            dirs::home_dir()
+                .map(|p| p.join("Library/Caches/com.apple.Safari"))
+                .unwrap_or_else(|| PathBuf::from("/tmp")),
+            dirs::home_dir()
+                .map(|p| p.join("Library/Caches/Safari"))
+                .unwrap_or_else(|| PathBuf::from("/tmp")),
+        ],
+        _ => vec![], // Safari is macOS only
+    }
+}
+
+fn get_downloads_path(os: &super::os::OS) -> Option<PathBuf> {
+    match os {
+        super::os::OS::Windows => Some(PathBuf::from(format!(
+            "{}\\Downloads",
+            std::env::var("USERPROFILE").unwrap_or_default()
+        ))),
+        super::os::OS::MacOS | super::os::OS::Linux => {
+            dirs::home_dir().map(|p| p.join("Downloads"))
+        }
+    }
+}
+
+fn get_trash_paths(os: &super::os::OS) -> Vec<(String, PathBuf)> {
+    match os {
+        super::os::OS::Windows => {
+            let user_profile = std::env::var("USERPROFILE").unwrap_or_default();
+            vec![
+                ("System".to_string(), PathBuf::from(format!("{}\\$Recycle.Bin", user_profile))),
+            ]
+        }
+        super::os::OS::MacOS => {
+            let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/tmp"));
+            vec![
+                ("User".to_string(), home.join(".Trash")),
+            ]
+        }
+        super::os::OS::Linux => {
+            let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/tmp"));
+            vec![
+                ("User".to_string(), home.join(".local/share/Trash")),
+            ]
+        }
+    }
+}
+
+fn get_screenshot_paths(os: &super::os::OS) -> Vec<(String, PathBuf)> {
+    match os {
+        super::os::OS::Windows => {
+            let user_profile = std::env::var("USERPROFILE").unwrap_or_default();
+            vec![
+                ("Desktop".to_string(), PathBuf::from(format!("{}\\Desktop", user_profile))),
+                ("Pictures".to_string(), PathBuf::from(format!("{}\\Pictures\\Screenshots", user_profile))),
+            ]
+        }
+        super::os::OS::MacOS => {
+            let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/tmp"));
+            vec![
+                ("Desktop".to_string(), home.join("Desktop")),
+                ("Pictures".to_string(), home.join("Pictures")),
+                ("Documents".to_string(), home.join("Documents")),
+            ]
+        }
+        super::os::OS::Linux => {
+            let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/tmp"));
+            vec![
+                ("Desktop".to_string(), home.join("Desktop")),
+                ("Pictures".to_string(), home.join("Pictures")),
+                ("Videos".to_string(), home.join("Videos")),
+            ]
         }
     }
 }

@@ -7,6 +7,7 @@ pub mod system;
 pub mod network;
 pub mod validator;
 pub mod exclusions;
+pub mod os_specific;
 
 use serde::{Deserialize, Serialize};
 
