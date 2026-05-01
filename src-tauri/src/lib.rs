@@ -5,7 +5,7 @@ pub mod logger;
 pub mod engine;
 
 use serde::{Deserialize, Serialize};
-use crate::engine::{browser, system, network, validator, DryRunOperation};
+use crate::engine::{browser, system, network, validator, os_specific, DryRunOperation};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CleanupProgress {

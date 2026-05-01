@@ -355,7 +355,7 @@ pub async fn analyze_os_specific(os: &OS) -> Vec<DryRunOperation> {
     operations
 }
 
-fn analyze_directory(path: &PathBuf) -> (u64, u64) {
+fn analyze_directory(path: &std::path::Path) -> (u64, u64) {
     let mut count = 0u64;
     let mut bytes = 0u64;
 
@@ -373,7 +373,7 @@ fn analyze_directory(path: &PathBuf) -> (u64, u64) {
     (count, bytes)
 }
 
-fn analyze_directory_recursive(path: &PathBuf) -> (u64, u64) {
+fn analyze_directory_recursive(path: &std::path::Path) -> (u64, u64) {
     let mut count = 0u64;
     let mut bytes = 0u64;
 

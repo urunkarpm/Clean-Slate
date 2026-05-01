@@ -1,6 +1,6 @@
 [package]
 name = "cleanslate-qa"
-version = "2.0.0"
+version = "2.1.0"
 description = "Cross-platform QA workstation reset utility"
 authors = ["CleanSlate Team"]
 edition = "2021"
