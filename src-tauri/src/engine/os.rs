@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum OS {
@@ -45,8 +46,17 @@ impl OS {
     pub fn get_temp_dir(&self) -> String {
         match self {
             OS::Windows => std::env::var("TEMP").unwrap_or_else(|_| "C:\\Temp".to_string()),
-            OS::MacOS => "/tmp".to_string(),
-            OS::Linux => "/tmp".to_string(),
+            // On macOS and Linux, return user-specific temp directory to avoid system-wide /tmp cleanup
+            OS::MacOS => dirs::cache_dir()
+                .map(|p| p.join("temp"))
+                .unwrap_or_else(|| PathBuf::from("/tmp"))
+                .to_string_lossy()
+                .to_string(),
+            OS::Linux => dirs::cache_dir()
+                .map(|p| p.join("temp"))
+                .unwrap_or_else(|| PathBuf::from("/tmp"))
+                .to_string_lossy()
+                .to_string(),
         }
     }
 
