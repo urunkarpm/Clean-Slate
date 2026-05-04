@@ -27,32 +27,37 @@ pub async fn analyze_system_cleanup(os: &super::os::OS) -> Vec<DryRunOperation> 
     // Analyze temp directory
     let temp_dir = PathBuf::from(os.get_temp_dir());
     let (count, bytes) = analyze_directory(&temp_dir);
+    // Only show would_modify for Windows or user-specific temp dirs on Linux/macOS
+    let would_modify_temp = !matches!(os, super::os::OS::Linux | super::os::OS::MacOS) || 
+                            !temp_dir.to_string_lossy().starts_with("/tmp");
     operations.push(DryRunOperation {
         name: "Temp Files".to_string(),
         path: temp_dir.to_string_lossy().to_string(),
         file_count: count,
         bytes,
-        would_modify: false,
+        would_modify: would_modify_temp,
     });
     
-    // Analyze shell history
-    let history_files = get_shell_history_paths(os);
-    for file in history_files {
-        let (count, bytes) = if file.exists() && file.is_file() {
-            match std::fs::metadata(&file) {
-                Ok(m) => (1, m.len()),
-                Err(_) => (0, 0),
-            }
-        } else {
-            (0, 0)
-        };
-        operations.push(DryRunOperation {
-            name: "Shell History".to_string(),
-            path: file.to_string_lossy().to_string(),
-            file_count: count,
-            bytes,
-            would_modify: false,
-        });
+    // Analyze shell history - only shown for Windows on actual cleanup
+    if matches!(os, super::os::OS::Windows) {
+        let history_files = get_shell_history_paths(os);
+        for file in history_files {
+            let (count, bytes) = if file.exists() && file.is_file() {
+                match std::fs::metadata(&file) {
+                    Ok(m) => (1, m.len()),
+                    Err(_) => (0, 0),
+                }
+            } else {
+                (0, 0)
+            };
+            operations.push(DryRunOperation {
+                name: "Shell History".to_string(),
+                path: file.to_string_lossy().to_string(),
+                file_count: count,
+                bytes,
+                would_modify: true,
+            });
+        }
     }
     
     operations
@@ -117,6 +122,21 @@ async fn clear_temp_files(os: &super::os::OS, exclusions: &ExclusionConfig) -> S
     let mut bytes_freed = 0u64;
     let mut error = None;
     
+    // Safety check: Never clean system-wide /tmp directory on Linux/macOS
+    // Only clean user-specific temp directories
+    let is_system_wide_tmp = temp_dir == PathBuf::from("/tmp") || 
+                             temp_dir.to_string_lossy().starts_with("/tmp/");
+    
+    if is_system_wide_tmp && matches!(os, super::os::OS::Linux | super::os::OS::MacOS) {
+        return SystemCleanupResult {
+            category: "Temp Files".to_string(),
+            cleared: false,
+            items_removed: 0,
+            bytes_freed: 0,
+            error: Some("Skipping system-wide /tmp cleanup for safety. Only user-specific temp directories are cleaned.".to_string()),
+        };
+    }
+    
     if temp_dir.exists() && temp_dir.is_dir() {
         for entry in WalkDir::new(&temp_dir).max_depth(1).into_iter().filter_map(|e| e.ok()) {
             // Check exclusions
@@ -157,6 +177,21 @@ async fn clear_clipboard() -> SystemCleanupResult {
 }
 
 async fn clear_shell_history(os: &super::os::OS, exclusions: &ExclusionConfig) -> SystemCleanupResult {
+    // Skip shell history cleanup on Linux/macOS as it can be disruptive and is user-specific data
+    // that should not be cleared without explicit user consent for each file
+    match os {
+        super::os::OS::Linux | super::os::OS::MacOS => {
+            return SystemCleanupResult {
+                category: "Shell History".to_string(),
+                cleared: false,
+                items_removed: 0,
+                bytes_freed: 0,
+                error: Some("Shell history cleanup skipped on Linux/macOS for safety.".to_string()),
+            };
+        }
+        super::os::OS::Windows => {} // Continue with Windows cleanup
+    }
+    
     let mut items_removed = 0u64;
     let mut error = None;
     
@@ -169,8 +204,8 @@ async fn clear_shell_history(os: &super::os::OS, exclusions: &ExclusionConfig) -
         }
         
         if file_path.exists() {
-            if let Err(_) = std::fs::write(&file_path, "") {
-                error = Some(format!("Failed to clear history file: {:?}", file_path));
+            if let Err(e) = std::fs::write(&file_path, "") {
+                error = Some(format!("Failed to clear history file: {:?}: {}", file_path, e));
             } else {
                 items_removed += 1;
             }
